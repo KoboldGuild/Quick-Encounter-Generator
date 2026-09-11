@@ -1,0 +1,736 @@
+/* ============================================================
+    HTML and Javascript together
+       ============================================================ */
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Titt's Questionably Prepared Encounter Generator</title>
+
+  <style>
+    :root {
+      --green-dark: #005244;
+      --cream: #efefdc;
+      --pink: #aa1b87;
+      --mint: #41bea6;
+      --text: #1d1d1d;
+      --white: #ffffff;
+      --border: #c8c8b6;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: var(--cream);
+      color: var(--text);
+    }
+
+    .page {
+      width: min(1000px, calc(100% - 32px));
+      margin: 40px auto;
+    }
+
+    header {
+      margin-bottom: 30px;
+    }
+
+    h1 {
+      margin: 0 0 12px;
+      color: var(--green-dark);
+      font-size: clamp(2rem, 5vw, 3.5rem);
+      line-height: 1;
+    }
+
+    .intro {
+      max-width: 760px;
+      font-size: 1.05rem;
+      line-height: 1.6;
+    }
+
+    .tier-panel {
+      background: var(--green-dark);
+      color: var(--white);
+      padding: 20px;
+      border-radius: 14px;
+      margin-bottom: 20px;
+    }
+
+    .tier-panel label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 700;
+      font-size: 1.05rem;
+    }
+
+    .tier-panel select {
+      width: 100%;
+      padding: 12px;
+      border-radius: 8px;
+      border: 0;
+      font: inherit;
+      font-weight: 700;
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    button {
+      font: inherit;
+      cursor: pointer;
+    }
+
+    .primary,
+    .secondary {
+      border: 0;
+      border-radius: 8px;
+      padding: 12px 18px;
+      font-weight: 700;
+    }
+
+    .primary {
+      background: var(--pink);
+      color: var(--white);
+    }
+
+    .secondary {
+      background: var(--green-dark);
+      color: var(--white);
+    }
+
+    .generator {
+      display: grid;
+      gap: 10px;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 220px 1fr auto auto;
+      align-items: stretch;
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .label {
+      border: 0;
+      background: var(--green-dark);
+      color: var(--white);
+      padding: 14px;
+      text-align: left;
+      font-weight: 700;
+    }
+
+    .label:hover {
+      background: var(--mint);
+      color: var(--text);
+    }
+
+    .value {
+      padding: 14px;
+      min-width: 0;
+      line-height: 1.45;
+    }
+
+    .icon-button {
+      border: 0;
+      border-left: 1px solid var(--border);
+      background: var(--white);
+      min-width: 50px;
+      padding: 10px;
+      font-size: 1.1rem;
+    }
+
+    .icon-button:hover {
+      background: var(--cream);
+    }
+
+    .icon-button.locked {
+      background: var(--mint);
+    }
+
+    .value.shuffling {
+      font-style: italic;
+      opacity: 0.7;
+    }
+
+    .label.is-rolling,
+    .primary.is-rolling {
+      pointer-events: none;
+      opacity: 0.75;
+    }
+
+    @media (max-width: 700px) {
+      .row {
+        grid-template-columns: 1fr auto auto;
+      }
+
+      .label {
+        grid-column: 1 / -1;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <main class="page">
+
+    <header>
+      <h1>Titt's Questionably Prepared Encounter Generator</h1>
+
+      <p class="intro">
+        Your players went somewhere you absolutely did not prepare for.
+        Of course they did. Pick how badly you'd like this to hurt
+        and let Titt rummage through the emergency encounter filing cabinet.
+      </p>
+    </header>
+
+    <section class="tier-panel">
+      <label for="tierSelect">Tier of Play</label>
+
+      <select id="tierSelect">
+        <option value="newbies">Newbies</option>
+        <option value="tier1">Tier 1</option>
+        <option value="tier2">Tier 2</option>
+        <option value="tier3">Tier 3</option>
+        <option value="tier4">Tier 4</option>
+        <option value="punish">PUNISH THEM</option>
+      </select>
+    </section>
+
+    <div class="toolbar">
+      <button class="primary" id="generateAll">Generate Encounter</button>
+      <button class="secondary" id="clearAll">Clear All</button>
+      <button class="secondary" id="unlockAll">Unlock All</button>
+      <button class="secondary" id="copyEncounter">Copy Encounter</button>
+    </div>
+
+    <section class="generator" id="generator"></section>
+  </main>
+
+  <script>
+    /* ============================================================
+       EDITABLE ENCOUNTER DATABASES
+
+       Add your options directly into the arrays below.
+
+       IMPORTANT:
+       Every result needs a comma after it, except the final result.
+
+       Example:
+       "Goblin",
+       "Bandit",
+       "Skeleton"
+       ============================================================ */
+
+
+    /* ============================================================
+       ENEMY DATABASES
+       Enemy results depend on the selected Tier of Play.
+       ============================================================ */
+
+    const ENEMIES = {
+
+      newbies: [
+        "Enemy option here",
+        "Another enemy option"
+      ],
+
+      tier1: [
+        "Enemy option here",
+        "Another enemy option"
+      ],
+
+      tier2: [
+        "Enemy option here",
+        "Another enemy option"
+      ],
+
+      tier3: [
+        "Enemy option here",
+        "Another enemy option"
+      ],
+
+      tier4: [
+        "Enemy option here",
+        "Another enemy option"
+      ],
+
+      punish: [
+        "Something deeply unreasonable",
+        "Another terrible idea"
+      ]
+    };
+
+
+    /* ============================================================
+       ATTITUDE
+       ============================================================ */
+
+    const ATTITUDE = [
+      "Hostile",
+      "Friendly",
+      "Neutral",
+      "Suspicious",
+      "Wary",
+      "Terrified",
+      "Desperate"
+    ];
+
+
+    /* ============================================================
+       HOW MANY?
+       ============================================================ */
+
+    const HOW_MANY = [
+      "One",
+      "Two",
+      "A small group",
+      "A larger group",
+      "One leader with several followers"
+    ];
+
+
+    /* ============================================================
+       WHAT ARE THEY DOING?
+       ============================================================ */
+
+    const DOING = [
+      "Doing something here",
+      "Doing something else here"
+    ];
+
+
+    /* ============================================================
+       WHAT DO THEY WANT?
+       ============================================================ */
+
+    const WANT = [
+      "Something from the players",
+      "Something else"
+    ];
+
+
+    /* ============================================================
+       MOTIVE
+       ============================================================ */
+
+    const MOTIVE = [
+      "Motive here",
+      "Another motive"
+    ];
+
+
+    /* ============================================================
+       FIRST DIALOGUE LINE
+       ============================================================ */
+
+    const FIRST_LINE = [
+      "\"Dialogue line here.\"",
+      "\"Another opening line.\""
+    ];
+
+
+    /* ============================================================
+       TERRAIN
+       ============================================================ */
+
+    const TERRAIN = [
+      "Terrain option here",
+      "Another terrain option"
+    ];
+
+
+    /* ============================================================
+       COMBAT STYLE
+       ============================================================ */
+
+    const COMBAT_STYLE = [
+      "Combat style here",
+      "Another combat style"
+    ];
+
+
+    /* ============================================================
+       MODIFICATIONS
+       ============================================================ */
+
+    const MODIFICATIONS = [
+      "No modification",
+      "Modification here",
+      "Another modification"
+    ];
+
+
+    /* ============================================================
+       COMPLICATION
+       ============================================================ */
+
+    const COMPLICATION = [
+      "No immediate complication",
+      "Complication here",
+      "Another complication"
+    ];
+
+
+    /* ============================================================
+       REWARD / LOOT
+       ============================================================ */
+
+    const REWARD = [
+      "Reward here",
+      "Another reward"
+    ];
+
+
+    /* ============================================================
+       MAIN DATABASE MAP
+       ============================================================ */
+
+    const DATA = {
+      attitude: ATTITUDE,
+      howMany: HOW_MANY,
+      doing: DOING,
+      want: WANT,
+      motive: MOTIVE,
+      firstLine: FIRST_LINE,
+      terrain: TERRAIN,
+      combatStyle: COMBAT_STYLE,
+      modifications: MODIFICATIONS,
+      complication: COMPLICATION,
+      reward: REWARD
+    };
+
+
+    /* ============================================================
+       CATEGORY ORDER
+       ============================================================ */
+
+    const fields = [
+      ["enemy", "Enemy"],
+      ["attitude", "Attitude"],
+      ["howMany", "How Many?"],
+      ["doing", "What Are They Doing?"],
+      ["want", "What Do They Want?"],
+      ["motive", "Motive"],
+      ["firstLine", "First Dialogue Line"],
+      ["terrain", "Terrain"],
+      ["combatStyle", "Combat Style"],
+      ["modifications", "Modifications"],
+      ["complication", "Complication"],
+      ["reward", "Reward / Loot"]
+    ];
+
+
+    /* ============================================================
+       GENERATOR STATE
+       ============================================================ */
+
+    const state = {};
+
+    fields.forEach(([key]) => {
+      state[key] = {
+        value: "",
+        locked: false
+      };
+    });
+
+
+    /* ============================================================
+       RANDOM ITEM
+       ============================================================ */
+
+    function randomItem(array) {
+      if (!array || array.length === 0) return "No options added yet";
+      return array[Math.floor(Math.random() * array.length)];
+    }
+
+
+    /* ============================================================
+       GENERATE ONE FIELD
+       ============================================================ */
+
+    function generateField(key) {
+      if (key === "enemy") {
+        const tier = document.getElementById("tierSelect").value;
+        return randomItem(ENEMIES[tier]);
+      }
+
+      return randomItem(DATA[key]);
+    }
+
+
+    /* ============================================================
+       SHUFFLE ANIMATION
+       ============================================================ */
+
+    function shuffleField(key, duration = 700) {
+      return new Promise((resolve) => {
+        const rowButton = document.querySelector(
+          `button.label[data-key="${key}"]`
+        );
+
+        const valueEl = rowButton
+          ? rowButton.parentElement.querySelector(".value")
+          : null;
+
+        if (!valueEl) {
+          state[key].value = generateField(key);
+          render();
+          resolve();
+          return;
+        }
+
+        rowButton.classList.add("is-rolling");
+        valueEl.classList.add("shuffling");
+
+        const started = performance.now();
+
+        function tick() {
+          valueEl.textContent = generateField(key);
+
+          const elapsed = performance.now() - started;
+
+          if (elapsed >= duration) {
+            state[key].value = generateField(key);
+            valueEl.textContent = state[key].value;
+
+            valueEl.classList.remove("shuffling");
+            rowButton.classList.remove("is-rolling");
+
+            resolve();
+            return;
+          }
+
+          const progress = elapsed / duration;
+          const delay = 45 + (progress * 110);
+
+          setTimeout(tick, delay);
+        }
+
+        tick();
+      });
+    }
+
+
+    /* ============================================================
+       RENDER GENERATOR
+       ============================================================ */
+
+    function render() {
+      const generator = document.getElementById("generator");
+
+      generator.innerHTML = "";
+
+      fields.forEach(([key, label]) => {
+        const row = document.createElement("div");
+        row.className = "row";
+
+        const labelButton = document.createElement("button");
+        labelButton.className = "label";
+        labelButton.dataset.action = "roll";
+        labelButton.dataset.key = key;
+        labelButton.textContent = label;
+
+        const value = document.createElement("div");
+        value.className = "value";
+        value.textContent = state[key].value;
+
+        const lockButton = document.createElement("button");
+        lockButton.className = "icon-button";
+
+        if (state[key].locked) {
+          lockButton.classList.add("locked");
+        }
+
+        lockButton.dataset.action = "lock";
+        lockButton.dataset.key = key;
+        lockButton.textContent = state[key].locked ? "🔒" : "🔓";
+        lockButton.title = state[key].locked ? "Unlock" : "Lock";
+
+        const clearButton = document.createElement("button");
+        clearButton.className = "icon-button";
+        clearButton.dataset.action = "clear";
+        clearButton.dataset.key = key;
+        clearButton.textContent = "✕";
+        clearButton.title = "Clear";
+
+        row.appendChild(labelButton);
+        row.appendChild(value);
+        row.appendChild(lockButton);
+        row.appendChild(clearButton);
+
+        generator.appendChild(row);
+      });
+    }
+
+
+    /* ============================================================
+       GENERATE ENTIRE ENCOUNTER
+       ============================================================ */
+
+    async function generateAll() {
+      const button = document.getElementById("generateAll");
+
+      button.classList.add("is-rolling");
+
+      const jobs = [];
+
+      for (const [key] of fields) {
+        if (!state[key].locked) {
+          jobs.push(shuffleField(key));
+        }
+      }
+
+      await Promise.all(jobs);
+
+      button.classList.remove("is-rolling");
+    }
+
+
+    /* ============================================================
+       CLEAR ALL
+       ============================================================ */
+
+    function clearAll() {
+      fields.forEach(([key]) => {
+        state[key].value = "";
+      });
+
+      render();
+    }
+
+
+    /* ============================================================
+       UNLOCK ALL
+       ============================================================ */
+
+    function unlockAll() {
+      fields.forEach(([key]) => {
+        state[key].locked = false;
+      });
+
+      render();
+    }
+
+
+    /* ============================================================
+       COPY ENCOUNTER
+       ============================================================ */
+
+    function copyEncounter() {
+      const tierSelect = document.getElementById("tierSelect");
+      const tierText = tierSelect.options[tierSelect.selectedIndex].text;
+
+      let text = "TITT'S QUESTIONABLY PREPARED ENCOUNTER\n\n";
+      text += `Tier of Play: ${tierText}\n\n`;
+
+      fields.forEach(([key, label]) => {
+        if (state[key].value) {
+          text += `${label}: ${state[key].value}\n`;
+        }
+      });
+
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text)
+          .then(() => {
+            alert("Encounter copied!");
+          })
+          .catch(() => {
+            fallbackCopy(text);
+          });
+      } else {
+        fallbackCopy(text);
+      }
+    }
+
+    function fallbackCopy(text) {
+      const textarea = document.createElement("textarea");
+      textarea.value = text;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      textarea.remove();
+
+      alert("Encounter copied!");
+    }
+
+
+    /* ============================================================
+       CATEGORY BUTTONS
+       ============================================================ */
+
+    document
+      .getElementById("generator")
+      .addEventListener("click", function(event) {
+        const button = event.target.closest("button");
+
+        if (!button) return;
+
+        const action = button.dataset.action;
+        const key = button.dataset.key;
+
+        if (!action || !key) return;
+
+        if (action === "roll") {
+          if (!state[key].locked) {
+            shuffleField(key);
+          }
+
+          return;
+        }
+
+        if (action === "lock") {
+          state[key].locked = !state[key].locked;
+          render();
+          return;
+        }
+
+        if (action === "clear") {
+          state[key].value = "";
+          render();
+          return;
+        }
+      });
+
+
+    /* ============================================================
+       MAIN BUTTONS
+       ============================================================ */
+
+    document
+      .getElementById("generateAll")
+      .addEventListener("click", generateAll);
+
+    document
+      .getElementById("clearAll")
+      .addEventListener("click", clearAll);
+
+    document
+      .getElementById("unlockAll")
+      .addEventListener("click", unlockAll);
+
+    document
+      .getElementById("copyEncounter")
+      .addEventListener("click", copyEncounter);
+
+
+    /* ============================================================
+       START BLANK
+       ============================================================ */
+
+    render();
+  </script>
+</body>
+</html>
+       
